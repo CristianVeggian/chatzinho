@@ -3,13 +3,13 @@ import threading
 import time
 from multiprocessing import shared_memory
 
-conexoes = list()
 shm_a = shared_memory.SharedMemory(create=True, size=1024)
-shm_a.buf = conexoes
+conexoes = shm_a
 
 HOSTNAME = socket.gethostname()
-HOSTIP = socket.gethostbyname(HOSTNAME)
-PORTA = 8000 # The port used by the server
+#HOSTIP = socket.gethostbyname(HOSTNAME)
+HOSTIP = ""
+PORTA = 12000 # The port used by the server
 
 def counter():
     while True:
@@ -19,23 +19,25 @@ def counter():
                 con[1].close()
                 shm_a.buf.pop(con)
 
+print("Inicializando Servidor\n")
+print(f"{HOSTNAME} hosteando {HOSTIP}:{PORTA}\n")
 print("Aguardando conexões\n")
 
-while True:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((HOSTIP, PORTA))
-        s.listen()
-        conexao, endereco = s.accept()
-        nickname = conexao.recv(128)
-        conexoes.append((nickname, conexao, time.time()))
-        with conexao:
-            conexao.sendall(b"Varzinha")
-            print(f"{nickname} entrou no chat!\n")
-            while True:
-                data = conexao.recv(1024)
-                print(f"{nickname}: {data}\n")
-                if data == "#sair":
-                    break
-                shm_a.buf[id] = time.time()
-                conexao.sendall(data)
+listaAddr = {}
+
+with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+    s.bind((HOSTIP, PORTA))
+    while True:
+        (data, addr) = s.recv(1024)
+        if addr not in listaAddr:
+            s.send(b"Conectado em Varzinha:")
+            print(f"{data} entrou no chat!\n")
+            listaAddr[addr] = data
+        else:
+            nickname = listaAddr[addr]
+            if data == "#sair":
+                break
+            print(f"{nickname}:{data}")
+            shm_a.buf[id] = time.time()
+            s.sendall(data)
 
