@@ -4,33 +4,37 @@ import time
 from multiprocessing import shared_memory
 
 shm_a = shared_memory.SharedMemory(create=True, size=1024)
-conexoes = shm_a
+listaAddr = shm_a
 
 HOSTNAME = socket.gethostname()
 #HOSTIP = socket.gethostbyname(HOSTNAME)
-HOSTIP = ""
-PORTA = 12000 # The port used by the server
+HOSTIP = "127.0.0.1"
+PORTA = 8123 # The port used by the server
+addr = (HOSTIP, PORTA)
 
-def counter():
+def counter(listaTime, listaAddr):
     while True:
-        for con in conexoes:
-            if time.time() - con[2] > 60:
-                print(f"{con[0]} saiu por inatividade.")
-                con[1].close()
-                shm_a.buf.pop(con)
+        for el in listaTime:
+            if time.time() - el.value:
+                print(f"{listaAddr[el.key]} saiu por inatividade.")
+                listaTime.pop(el.key)
+                listaAddr.pop(el.key)
 
-print("Inicializando Servidor\n")
-print(f"{HOSTNAME} hosteando {HOSTIP}:{PORTA}\n")
+print("Inicializando Servidor")
+print(f"{HOSTNAME} hosteando {HOSTIP}:{PORTA}")
 print("Aguardando conexões\n")
 
 listaAddr = {}
+listaTime = {}
 
 with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-    s.bind((HOSTIP, PORTA))
+    # Bind the socket to the port
+    server_address = addr
+    s.bind(server_address)
     while True:
         (data, addr) = s.recv(1024)
         if addr not in listaAddr:
-            s.send(b"Conectado em Varzinha:")
+            s.send(b"Varzinha")
             print(f"{data} entrou no chat!\n")
             listaAddr[addr] = data
         else:
@@ -38,6 +42,5 @@ with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             if data == "#sair":
                 break
             print(f"{nickname}:{data}")
-            shm_a.buf[id] = time.time()
             s.sendall(data)
-
+        listaTime[addr] = time.time()
